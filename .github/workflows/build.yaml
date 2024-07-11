@@ -14,16 +14,8 @@ jobs:
     - uses: actions/checkout@v3
     - name: Show origin
       run: git remote -v
-    - name: Show git status
-      run: git status
-    - name: List files in repo
-      run: ls -la
-    - name: Show local branches
-      run: git branch -vv
-    - name: Show remote branches
-      run: git branch -r
-    - name: Show git config
-      run: git config --list --show-origin
+    - name: Checkout main branch
+      run: git checkout main || git checkout -b main
     - name: Fetch history and tags for SCM versioning to work
       run: |
         git fetch origin
