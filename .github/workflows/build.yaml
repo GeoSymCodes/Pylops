@@ -16,10 +16,18 @@ jobs:
       run: git remote -v
     - name: Show git status
       run: git status
+    - name: List files in repo
+      run: ls -la
+    - name: Show local branches
+      run: git branch -vv
+    - name: Show remote branches
+      run: git branch -r
+    - name: Show git config
+      run: git config --list --show-origin
     - name: Fetch history and tags for SCM versioning to work
       run: |
         git fetch --prune
-        git fetch --unshallow
+        git fetch --unshallow || echo "Ignoring unshallow error"
         git fetch --depth=1 origin +refs/tags/*:refs/tags/*
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
