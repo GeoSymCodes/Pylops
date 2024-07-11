@@ -14,9 +14,12 @@ jobs:
     - uses: actions/checkout@v3
     - name: Show origin
       run: git remote -v
-    - name: Get history and tags for SCM versioning to work
+    - name: Show git status
+      run: git status
+    - name: Fetch history and tags for SCM versioning to work
       run: |
-        git fetch --prune --unshallow
+        git fetch --prune
+        git fetch --unshallow
         git fetch --depth=1 origin +refs/tags/*:refs/tags/*
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
