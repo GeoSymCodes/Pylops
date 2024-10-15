@@ -153,6 +153,7 @@ class _AcousticWave(LinearOperator):
         src_y: NDArray = None,
         rec_y: NDArray = None,
         dt: int = None,
+        **kwargs,
     ) -> None:
         if devito_message is not None:
             raise NotImplementedError(devito_message)
@@ -164,6 +165,7 @@ class _AcousticWave(LinearOperator):
         )
         self.checkpointing = checkpointing
         self.karguments = {}
+        self._kwargs = kwargs
 
         super().__init__(
             dtype=np.dtype(dtype),
@@ -326,7 +328,7 @@ class _AcousticWave(LinearOperator):
             f0=self.geometry.f0,
             src_type=self.geometry.src_type,
         )
-        solver = AcousticWaveSolver(self.model, geometry, space_order=self.space_order)
+        solver = AcousticWaveSolver(self.model, geometry, space_order=self.space_order, **self._kwargs)
 
         # assign source location to source object with custom wavelet
         if hasattr(self, "wav"):
@@ -428,7 +430,7 @@ class _AcousticWave(LinearOperator):
         )
 
         # solve
-        solver = AcousticWaveSolver(self.model, geometry, space_order=self.space_order)
+        solver = AcousticWaveSolver(self.model, geometry, space_order=self.space_order, **self._kwargs)
 
         nsrc = self.geometry.src_positions.shape[0]
         dtot = []
@@ -470,7 +472,7 @@ class _AcousticWave(LinearOperator):
         recs = self.geometry.rec.copy()
         recs.data[:] = dobs.T[:]
 
-        solver = AcousticWaveSolver(self.model, geometry, space_order=self.space_order)
+        solver = AcousticWaveSolver(self.model, geometry, space_order=self.space_order, **self._kwargs)
 
         # assign source location to source object with custom wavelet
         if hasattr(self, "wav"):
@@ -512,7 +514,7 @@ class _AcousticWave(LinearOperator):
             mtot += self._crop_model(m.data, self.model.nbl)
         return mtot
 
-    def _fwd_oneshot(self, isrc: int, v: NDArray) -> NDArray:
+    def _fwd_oneshot(self, solver: AcousticWaveSolver, v: NDArray) -> NDArray:
         """Forward modelling for one shot
 
         Parameters
@@ -528,21 +530,8 @@ class _AcousticWave(LinearOperator):
             Data
 
         """
-        # create geometry for single source
-        geometry = AcquisitionGeometry(
-            self.model,
-            self.geometry.rec_positions,
-            self.geometry.src_positions[isrc, :],
-            self.geometry.t0,
-            self.geometry.tn,
-            f0=self.geometry.f0,
-            src_type=self.geometry.src_type,
-        )
-
-        # solve
-        solver = AcousticWaveSolver(self.model, geometry, space_order=self.space_order)
         d = solver.forward(**self.karguments)[0]
-        d = d.resample(geometry.dt).data[:][: geometry.nt].T
+        d = d.resample(solver.geometry.dt).data[:][: solver.geometry.nt].T
         return d
 
     def _fwd_allshots(self, v: NDArray) -> NDArray:
@@ -559,11 +548,26 @@ class _AcousticWave(LinearOperator):
             Data for all shots
 
         """
+        # create geometry for single source
+        geometry = AcquisitionGeometry(
+            self.model,
+            self.geometry.rec_positions,
+            self.geometry.src_positions[0, :],
+            self.geometry.t0,
+            self.geometry.tn,
+            f0=self.geometry.f0,
+            src_type=self.geometry.src_type,
+        )
+
+        # solve
+        solver = AcousticWaveSolver(self.model, geometry, space_order=self.space_order, **self._kwargs)
+        
         nsrc = self.geometry.src_positions.shape[0]
         dtot = []
 
         for isrc in range(nsrc):
-            d = self._fwd_oneshot(isrc, v)
+            solver.geometry.src_positions = self.geometry.src_positions[isrc, :]
+            d = self._fwd_oneshot(solver, v)
             dtot.append(d)
         dtot = np.array(dtot).reshape(nsrc, d.shape[0], d.shape[1])
         return dtot
@@ -691,6 +695,7 @@ class AcousticWave2D(_AcousticWave):
         name: str = "A",
         op_name: str = "born",
         dt: int = None,
+        **kwargs,
     ) -> None:
 
         if len(shape) != 2:
@@ -718,6 +723,7 @@ class AcousticWave2D(_AcousticWave):
             name=name,
             op_name=op_name,
             dt=dt,
+            **kwargs,
         )
 
     @staticmethod
@@ -750,6 +756,7 @@ class AcousticWave3D(_AcousticWave):
         name: str = "A",
         op_name: str = "born",
         dt: int = None,
+        **kwargs,
     ) -> None:
 
         if len(shape) != 3:
@@ -779,6 +786,7 @@ class AcousticWave3D(_AcousticWave):
             name=name,
             op_name=op_name,
             dt=dt,
+            **kwargs,
         )
 
     @staticmethod
@@ -1685,6 +1693,7 @@ class _ViscoAcousticWave(LinearOperator):
         src_y: NDArray = None,
         rec_y: NDArray = None,
         dt: int = None,
+        **kwargs,
     ) -> None:
         if devito_message is not None:
             raise NotImplementedError(devito_message)
@@ -1698,6 +1707,7 @@ class _ViscoAcousticWave(LinearOperator):
         self.kernel = kernel
         self.time_order = time_order
         self.karguments = {}
+        self._kwargs = kwargs
 
         super().__init__(
             dtype=np.dtype(dtype),
@@ -1853,6 +1863,7 @@ class _ViscoAcousticWave(LinearOperator):
             space_order=self.space_order,
             kernel=self.kernel,
             time_order=self.time_order,
+            **self._kwargs
         )
         d = solver.forward(**self.karguments)[0]
         d = d.resample(geometry.dt).data[:][: geometry.nt].T
@@ -2010,6 +2021,7 @@ class ViscoAcousticWave2D(_ViscoAcousticWave):
         name: str = "A",
         op_name: str = "fwd",
         dt: int = None,
+        **kwargs,
     ) -> None:
 
         if len(shape) != 2:
@@ -2041,6 +2053,7 @@ class ViscoAcousticWave2D(_ViscoAcousticWave):
             name=name,
             op_name=op_name,
             dt=dt,
+            **kwargs,
         )
 
     @staticmethod
@@ -2077,6 +2090,7 @@ class ViscoAcousticWave3D(_ViscoAcousticWave):
         name: str = "A",
         op_name: str = "fwd",
         dt: int = None,
+        **kwargs,
     ) -> None:
 
         if len(shape) != 3:
@@ -2110,6 +2124,7 @@ class ViscoAcousticWave3D(_ViscoAcousticWave):
             name=name,
             op_name=op_name,
             dt=dt,
+            **kwargs,
         )
 
     @staticmethod
