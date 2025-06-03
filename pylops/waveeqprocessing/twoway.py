@@ -1510,7 +1510,7 @@ class _ViscoAcousticWave(_Wave):
         self.space_order = space_order
         self.model = Model(
             space_order=space_order,
-            vp=vp * 1e-3,
+            vp=vp / 1000,
             qp=qp,
             b=b,
             origin=origin,
@@ -1587,10 +1587,63 @@ class _ViscoAcousticWave(_Wave):
     def _adj_allshots(self, v: NDArray) -> NDArray:
         raise Exception("Method not yet implemented")
 
+    def _grad_oneshot(self, isrc, dobs):
+        """ """
+        # create geometry for single source
+        geometry = AcquisitionGeometry(
+            self.model,
+            self.geometry.rec_positions,
+            self.geometry.src_positions[isrc, :],
+            self.geometry.t0,
+            self.geometry.tn,
+            f0=self.geometry.f0,
+            src_type=self.geometry.src_type,
+        )
+
+        rec = self.geometry.rec.copy()
+        rec.data[:] = dobs.T
+
+        solver = ViscoacousticWaveSolver(
+            self.model,
+            geometry,
+            space_order=self.space_order,
+            kernel=self.kernel,
+            time_order=self.time_order,
+        )
+
+        # source wavefield
+        if hasattr(self, "src_wavefield"):
+            p = self.src_wavefield[isrc]
+        else:
+            p = solver.forward(save=True)[1]
+
+        # adjoint modelling (reverse wavefield plus imaging condition)
+        grad, _ = solver.jacobian_adjoint(rec, p)
+
+        return grad
+
+    def _grad_allshots(self, dobs: NDArray) -> NDArray:
+        """ """
+        nsrc = self.geometry.src_positions.shape[0]
+        shape = self.model.shape
+        if self.model.dim == 2:
+            grads = np.zeros((shape[0], shape[1]), dtype=np.float32)
+        elif self.model.dim == 3:
+            grads = np.zeros((shape[0], shape[1], shape[2]), dtype=np.float32)
+
+        for isrc in range(nsrc):
+            # For each dobs get data equivalent to isrc shot
+            isrc_rec = dobs[isrc]
+            grad = self._grad_oneshot(isrc, isrc_rec)
+            grads += self._crop_model(grad.data, self.model.nbl)
+        return grads
+
     def _register_multiplications(self, op_name: str) -> None:
         if op_name == "fwd":
             self._acoustic_matvec = self._fwd_allshots
-            self._acoustic_rmatvec = self._adj_allshots
+            self._acoustic_rmatvec = self._grad_allshots
+        else:
+            raise Exception(f"The operator's name '{op_name}' is not valid.")
 
     @reshaped
     def _matvec(self, x: NDArray) -> NDArray:
