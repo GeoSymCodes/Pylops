@@ -156,25 +156,36 @@ class _Wave(LinearOperator, PhysicalPropertiesMixin):
             f0=None if f0 is None else f0 * 1e-3,
         )
 
-    def updatesrc(self, wav):
+    def updatesrc(self, wav, method="padding", max_padding=None):
         """Update source wavelet
 
-        This routines is used to allow users to pass a custom source
-        wavelet to replace the source wavelet generated when the
-        object is initialized
+        This routine allows users to pass a custom source
+        wavelet to replace the source wavelet generated during
+        the object's initialization.
 
         Parameters
         ----------
         wav : :obj:`numpy.ndarray`
             Wavelet
+        method : :str
+            Method representing how the data will be filled up to the total nt.
+            - padding
+            - resample
 
         """
-        wav_padded = np.pad(wav, (0, self.geometry.nt - len(wav)))
+        wav = wav.reshape(-1)
+        if method not in {"padding", "resample"}:
+            raise ValueError(f"Invalid method '{method}'. Supported methods are 'padding', 'resample'.")
+
+        if method == "padding":
+            wav_data = np.pad(wav, (0, self.geometry.nt - len(wav)))
+        elif method == "resample":
+            wav_data = self.resample(wav, self.geometry.nt)
 
         self.wav = _CustomSource(
             name="src",
             grid=self.model.grid,
-            wav=wav_padded,
+            wav=wav_data,
             time_range=self.geometry.time_axis,
         )
 
@@ -356,24 +367,53 @@ class _Wave(LinearOperator, PhysicalPropertiesMixin):
         self._update_geometry(rx, rz, sx, sz, nrec)
 
     def resample(self, data, num):
-        nshots, ntraces, nsteps = data.shape
+        """
+        Resample the input data to a new number of time steps.
 
-        time_range = TimeAxis(
-            start=self.geometry.time_axis.start,
-            stop=self.geometry.time_axis.stop,
-            num=nsteps,
-        )
-        new_data = np.zeros((nshots, ntraces, num), dtype=np.float32)
-        for shot_id in range(nshots):
+        This method determines whether the input data corresponds to receiver data
+        or source data based on its shape and calls the appropriate resampling method.
 
-            rec = Receiver(
-                name="rec", grid=self.model.grid, npoint=ntraces, time_range=time_range
-            )
-            rec.data[:] = data[shot_id].T
-            rec = rec.resample(num=num)
+        Parameters
+        ----------
+        data : :obj:`numpy.ndarray`
+            Input data to be resampled. Can be either source or receiver data.
+        num : :obj:`int`
+            Number of time steps for the resampled data.
+        """
+        if len(data.shape) == 3:
+            # receivers has shape (nshots, nrec, nt)
+            return self._resample_rec(data, num)
+        else:
+            return self._resample_src(data, num)
 
-            new_data[shot_id] = rec.data.T
+    def _resample_src(self, data, num):
+        nsteps = data.shape[0]
+
+        time_range = TimeAxis(start=self.geometry.time_axis.start, stop=self.geometry.time_axis.stop, num=nsteps)
+        new_data = np.zeros((num), dtype=np.float32)
+
+        src = PointSource(name='src', grid=self.model.grid, npoint=1, time_range=time_range)
+        src.data[:] = data[:].reshape(-1, 1)
+        src = src.resample(num=num)
+
+        new_data[:] = src.data.T
         return new_data
+
+    def _resample_rec(self, data, num):
+        from scipy import interpolate
+
+        nshots, ntraces, nsteps = data.shape
+        time_range = TimeAxis(start=self.geometry.time_axis.start, stop=self.geometry.time_axis.stop, num=nsteps)
+
+        new_time_range = TimeAxis(start=self.geometry.time_axis.start, stop=self.geometry.time_axis.stop, num=num)
+        new_traces = np.zeros((nshots, ntraces, num), dtype=np.float32)
+        for shot_id in range(nshots):     
+            for i in range(ntraces):
+                tck = interpolate.splrep(time_range.time_values,
+                                        data[shot_id, i, :], k=3)
+                new_traces[shot_id, i] = interpolate.splev(new_time_range.time_values, tck)
+
+        return new_traces
 
     def add_args(self, **kwargs):
         self.karguments = kwargs
@@ -854,7 +894,7 @@ class _AcousticWave(_Wave):
         else:
             return mtot
 
-    def _fwd_oneshot(self, solver: AcousticWaveSolver, v: NDArray) -> NDArray:
+    def _fwd_oneshot(self, isrc, solver: AcousticWaveSolver, v: NDArray) -> NDArray:
         """Forward modelling for one shot
 
         Parameters
@@ -884,7 +924,11 @@ class _AcousticWave(_Wave):
         # add vp to karguments to be used inside devito's solver
         self.karguments.update({"vp": function})
 
-        d = solver.forward(**self.karguments)[0]
+        # assign source location to source object with custom wavelet
+        if hasattr(self, "wav"):
+            self.wav.coordinates.data[0, :] = self.geometry.src_positions[isrc, :]
+
+        d = solver.forward(**self.karguments, src=None if not hasattr(self, "wav") else self.wav)[0]
         d = d.resample(solver.geometry.dt).data[:][: solver.geometry.nt].T
         return d
 
@@ -925,7 +969,7 @@ class _AcousticWave(_Wave):
 
         for isrc in range(nsrc):
             solver.geometry.src_positions = self.geometry.src_positions[isrc, :]
-            d = self._fwd_oneshot(solver, v)
+            d = self._fwd_oneshot(isrc, solver, v)
             dtot.append(d)
         dtot = np.array(dtot).reshape(nsrc, d.shape[0], d.shape[1])
         return dtot
@@ -1192,7 +1236,7 @@ class _ElasticWave(_Wave):
             **physical_parameters,
         )
 
-    def _fwd_oneshot(self, solver: GenericElasticWaveSolver, v: NDArray) -> NDArray:
+    def _fwd_oneshot(self, isrc, solver: GenericElasticWaveSolver, v: NDArray) -> NDArray:
         """Forward modelling for one shot
 
         Parameters
@@ -1232,11 +1276,14 @@ class _ElasticWave(_Wave):
         # Update 'karguments' to contain the values of the parameters defined in 'args'
         self.karguments.update(dict(zip(args, functions)))
 
+        # assign source location to source object with custom wavelet
+        if hasattr(self, "wav"):
+            self.wav.coordinates.data[0, :] = self.geometry.src_positions[isrc, :]
+
         dim = self.model.dim
 
-        *rec_data, v = solver.forward(**self.karguments, save=self.save_wavefield)[
-            0 : dim + 2
-        ]
+        *rec_data, v = solver.forward(**self.karguments, save=self.save_wavefield,
+                                      src=None if not hasattr(self, "wav") else self.wav)[0 : dim + 2]
         if self.save_wavefield:
             self.src_wavefield.append(v)
 
@@ -1281,7 +1328,7 @@ class _ElasticWave(_Wave):
 
         for isrc in range(nsrc):
             solver.geometry.src_positions = self.geometry.src_positions[isrc, :]
-            d = self._fwd_oneshot(solver, v)
+            d = self._fwd_oneshot(isrc, solver, v)
             dtot.append(deepcopy(d))
 
         # Adjust dimensions
@@ -1581,12 +1628,18 @@ class _ElasticWave(_Wave):
         # If "par" was not passed as a parameter to forward execution, use the operator's default value
         self.karguments["par"] = self.karguments.get("par", self.par)
 
+        # assign source location to source object with custom wavelet
+        if hasattr(self, "wav"):
+            self.wav.coordinates.data[0, :] = self.geometry.src_positions[isrc, :]
+
         # source wavefield
         if hasattr(self, "src_wavefield"):
             u0 = self.src_wavefield[isrc]
         else:
             par = self.karguments.get("par")
-            u0 = solver.forward(save=True if not dswap else False, par=par)[dim + 1]
+            u0 = solver.forward(save=True if not dswap else False,
+                                src=None if not hasattr(self, "wav") else self.wav,
+                                par=par)[dim + 1]
 
         # adjoint modelling (reverse wavefield)
         grad1, grad2, grad3 = solver.jacobian_adjoint(
@@ -1967,7 +2020,7 @@ class _ViscoAcousticWave(_Wave):
         dtot = np.array(dtot).reshape(nsrc, d.shape[0], d.shape[1])
         return dtot
 
-    def _fwd_oneshot(self, solver: AcousticWaveSolver, v: NDArray) -> NDArray:
+    def _fwd_oneshot(self, isrc, solver: AcousticWaveSolver, v: NDArray) -> NDArray:
         """Forward modelling for one shot
 
         Parameters
@@ -1996,7 +2049,12 @@ class _ViscoAcousticWave(_Wave):
 
         # add vp to karguments to be used inside devito's solver
         self.karguments.update({"vp": function})
-        d = solver.forward(**self.karguments)[0]
+
+        # assign source location to source object with custom wavelet
+        if hasattr(self, "wav"):
+            self.wav.coordinates.data[0, :] = self.geometry.src_positions[isrc, :]
+
+        d = solver.forward(**self.karguments, src=None if not hasattr(self, "wav") else self.wav)[0]
         d = d.resample(solver.geometry.dt).data[:][: solver.geometry.nt].T
         return d
 
@@ -2038,7 +2096,7 @@ class _ViscoAcousticWave(_Wave):
 
         for isrc in range(nsrc):
             solver.geometry.src_positions = self.geometry.src_positions[isrc, :]
-            d = self._fwd_oneshot(solver, v)
+            d = self._fwd_oneshot(isrc, solver, v)
             dtot.append(d)
         dtot = np.array(dtot).reshape(nsrc, d.shape[0], d.shape[1])
         return dtot
