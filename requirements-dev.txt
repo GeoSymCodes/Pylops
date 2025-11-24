@@ -8,7 +8,7 @@ PyWavelets
 spgl1
 scikit-fmm
 sympy
-devito
+devito==4.88.20
 dtcwt
 matplotlib
 ipython
