@@ -23,6 +23,11 @@ if devito_message is None:
     from examples.seismic.source import TimeAxis
     from examples.seismic.utils import PointSource, sources
 
+print(
+    "===================================== DEVITO MESSAGE ========================================="
+)
+print(f"Devito message is {devito_message}")
+
 
 class _CustomSource(PointSource):
     """Custom source
