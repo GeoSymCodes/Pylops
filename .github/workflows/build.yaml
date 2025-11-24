@@ -35,6 +35,9 @@ jobs:
       run: |
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements-dev.txt; fi
+    - name: Install GeoSymCodes Devito
+      run: |
+        pip install git+https://github.com/GeoSymCodes/devito.git
     - name: Install pylops
       run: |
         python -m setuptools_scm
