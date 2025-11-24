@@ -21,12 +21,12 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y openmpi-bin libopenmpi-dev
+        sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential
     - name: Install OpenMPI on macOS
       if: runner.os == 'macOS'
       run: |
         brew update
-        brew install open-mpi
+        brew install open-mpi gcc
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
