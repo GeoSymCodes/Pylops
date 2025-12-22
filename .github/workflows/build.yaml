@@ -28,34 +28,26 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            openmpi-bin \
-            libopenmpi-dev \
-            build-essential
+          sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential
+
+      - name: Configure Devito compiler (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo "DEVITO_COMPILER=gnu" >> $GITHUB_ENV
 
       # =========================
       # macOS
       # =========================
-      - name: Install OpenMPI + GCC on macOS
+      - name: Install OpenMPI on macOS
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew install open-mpi gcc
+          brew install open-mpi
 
-      - name: Configure compiler for Devito (macOS)
+      - name: Configure Devito compiler (macOS)
         if: runner.os == 'macOS'
         run: |
-          echo "CC=gcc-14" >> $GITHUB_ENV
-          echo "CXX=g++-14" >> $GITHUB_ENV
-
-      # =========================
-      # Python deps
-      # =========================
-      - name: Install base Python dependencies
-        run: |
-          pip install --upgrade pip
-          pip install setuptools wheel setuptools_scm flake8 pytest mpi4py
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          echo "DEVITO_COMPILER=clang" >> $GITHUB_ENV
 
       # =========================
       # Devito fork
@@ -74,13 +66,11 @@ jobs:
       # =========================
       # Sanity check (IMPORTANTE)
       # =========================
-      - name: Debug Devito/PyLops
+      - name: Test Devito import
         run: |
           python - << 'EOF'
-          import devito, pylops, inspect
-          print("Devito version:", devito.__version__)
-          print("Devito path:", inspect.getfile(devito))
-          print("PyLops path:", inspect.getfile(pylops))
+          import devito
+          print("Devito OK:", devito.__version__)
           EOF
 
       - name: Test with pytest
