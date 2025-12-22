@@ -7,23 +7,23 @@ jobs:
     strategy:
       matrix:
         platform: [ ubuntu-latest, macos-latest ]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11"]   # 🚫 3.12 removido
 
     runs-on: ${{ matrix.platform }}
 
-    env:
-      DEVITO_ARCH: gcc
-      CC: gcc
-      CXX: g++
-
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # necessário para setuptools_scm
 
-      - name: Get history and tags for SCM versioning to work
-        run: |
-          git fetch --prune
-          git fetch --depth=1 origin +refs/tags/*:refs/tags/* || echo "No tags to fetch"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
+      # =========================
+      # Linux
+      # =========================
       - name: Install OpenMPI on Linux
         if: runner.os == 'Linux'
         run: |
@@ -31,33 +31,57 @@ jobs:
           sudo apt-get install -y \
             openmpi-bin \
             libopenmpi-dev \
-            build-essential \
-            gcc g++ clang
+            build-essential
 
-      - name: Install OpenMPI on macOS
+      # =========================
+      # macOS
+      # =========================
+      - name: Install OpenMPI + GCC on macOS
         if: runner.os == 'macOS'
         run: |
           brew update
           brew install open-mpi gcc
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
+      - name: Configure compiler for Devito (macOS)
+        if: runner.os == 'macOS'
         run: |
-          pip install flake8 pytest
-          if [ -f requirements.txt ]; then pip install -r requirements-dev.txt; fi
+          echo "CC=gcc-14" >> $GITHUB_ENV
+          echo "CXX=g++-14" >> $GITHUB_ENV
 
+      # =========================
+      # Python deps
+      # =========================
+      - name: Install base Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install setuptools wheel setuptools_scm flake8 pytest mpi4py
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      # =========================
+      # Devito fork
+      # =========================
       - name: Install GeoSymCodes Devito
         run: |
           pip install git+https://github.com/GeoSymCodes/devito.git
 
-      - name: Install pylops
+      # =========================
+      # PyLops LOCAL
+      # =========================
+      - name: Install pylops (local)
         run: |
-          python -m setuptools_scm
           pip install .
+
+      # =========================
+      # Sanity check (IMPORTANTE)
+      # =========================
+      - name: Debug Devito/PyLops
+        run: |
+          python - << 'EOF'
+          import devito, pylops, inspect
+          print("Devito version:", devito.__version__)
+          print("Devito path:", inspect.getfile(devito))
+          print("PyLops path:", inspect.getfile(pylops))
+          EOF
 
       - name: Test with pytest
         run: |
