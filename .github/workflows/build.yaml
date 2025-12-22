@@ -49,6 +49,26 @@ jobs:
         run: |
           echo "DEVITO_COMPILER=clang" >> $GITHUB_ENV
 
+      # ------------------------------------------------------------
+      # Python
+      # ------------------------------------------------------------
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade Python tooling
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+
+      # ------------------------------------------------------------
+      # Python dependencies (EXPLICIT)
+      # ------------------------------------------------------------
+      - name: Install base Python dependencies
+        run: |
+          pip install packaging flake8 pytest
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
       # =========================
       # Devito fork
       # =========================
