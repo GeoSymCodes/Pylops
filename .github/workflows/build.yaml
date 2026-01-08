@@ -57,7 +57,7 @@ jobs:
       # =========================
       - name: Install GeoSymCodes Devito
         run: |
-          pip install git+https://github.com/GeoSymCodes/devito.git
+          pip install git+https://github.com/GeoSymCodes/devito.git packaging
 
       # =========================
       # Sanity check (IMPORTANTE)

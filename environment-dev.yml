@@ -27,7 +27,6 @@ dependencies:
   - black
   - pip:
     - devito
-    - packaging
     - dtcwt
     - scikit-fmm
     - spgl1
