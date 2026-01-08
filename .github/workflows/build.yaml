@@ -29,16 +29,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential
-      - name: Install clang
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang
-          python - << 'EOF'
-          from codepy.toolchain import guess_toolchain
-          tc = guess_toolchain()
-          print(type(tc))
-          print(vars(tc))
-          EOF
 
       # ------------------------------------------------------------
       # Python
@@ -77,6 +67,17 @@ jobs:
       # =========================
       # Sanity check (IMPORTANTE)
       # =========================
+      - name: Install clang
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+          python - << 'EOF'
+          from codepy.toolchain import guess_toolchain
+          tc = guess_toolchain()
+          print(type(tc))
+          print(vars(tc))
+          EOF
+
       - name: Test Devito import
         if: runner.os == 'Linux'
         run: |
