@@ -6,7 +6,7 @@ jobs:
   build:
     strategy:
       matrix:
-        platform: [ ubuntu-latest, macos-latest ]
+        platform: [ ubuntu-latest, ]
         python-version: ["3.11", "3.12"]   # 🚫 3.10 removido
 
     runs-on: ${{ matrix.platform }}
@@ -29,21 +29,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential
-
-      - name: Configure compiler
-        if: runner.os == 'Linux'
+      - name: Install clang
         run: |
-          echo "CC=gcc" >> $GITHUB_ENV
-          echo "CXX=g++" >> $GITHUB_ENV
-
-      # =========================
-      # macOS
-      # =========================
-      - name: Install OpenMPI on macOS
-        if: runner.os == 'macOS'
-        run: |
-          brew update
-          brew install open-mpi
+          sudo apt-get update
+          sudo apt-get install -y clang
+          python - << 'EOF'
+          from codepy.toolchain import guess_toolchain
+          tc = guess_toolchain()
+          print(type(tc))
+          print(vars(tc))
+          EOF
 
       # ------------------------------------------------------------
       # Python
