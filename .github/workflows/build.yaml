@@ -57,7 +57,7 @@ jobs:
       # =========================
       - name: Install GeoSymCodes Devito
         run: |
-          micromamba run -n pylops pip install git+https://github.com/GeoSymCodes/devito.git packaging
+          micromamba run -n pylops pip install git+https://github.com/GeoSymCodes/devito.git packaging numpy==1.26.3
 
       # =========================
       # Sanity check (IMPORTANTE)
