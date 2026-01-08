@@ -95,7 +95,16 @@ jobs:
           print(vars(tc))
           EOF
 
-
+      # =========================
+      # Sanity check (IMPORTANTE)
+      # =========================
+      - name: Test Devito import
+        if: runner.os == 'Linux'
+        run: |
+          python - << 'EOF'
+          import devito
+          print("Devito OK:", devito.__version__)
+          EOF
 
       - name: Test with pytest
         run: |
