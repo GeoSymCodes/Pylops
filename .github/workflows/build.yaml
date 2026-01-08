@@ -70,18 +70,18 @@ jobs:
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
       # =========================
-      # Devito fork
-      # =========================
-      - name: Install GeoSymCodes Devito
-        run: |
-          pip install git+https://github.com/GeoSymCodes/devito.git
-
-      # =========================
       # PyLops LOCAL
       # =========================
       - name: Install pylops (local)
         run: |
           pip install .
+
+      # =========================
+      # Devito fork
+      # =========================
+      - name: Install GeoSymCodes Devito
+        run: |
+          pip install git+https://github.com/GeoSymCodes/devito.git
 
       # =========================
       # Sanity check (IMPORTANTE)
