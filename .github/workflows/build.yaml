@@ -79,6 +79,13 @@ jobs:
         run: |
           pip install git+https://github.com/GeoSymCodes/devito.git
 
+      - name: Test ENV VARS
+        run: |
+          which gcc || true
+          gcc --version || true
+          which cc || true
+          cc --version || true
+
       # =========================
       # Sanity check (IMPORTANTE)
       # =========================
