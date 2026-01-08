@@ -11,7 +11,7 @@ pytest
 Sphinx
 numpydoc
 numba
-icc_rt
+icc-rt
 pre-commit
 autopep8
 isort
