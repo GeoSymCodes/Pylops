@@ -81,10 +81,12 @@ jobs:
 
       - name: Test ENV VARS
         run: |
-          which gcc || true
-          gcc --version || true
-          which cc || true
-          cc --version || true
+          python - << 'EOF'
+          from codepy.toolchain import guess_toolchain
+          tc = guess_toolchain()
+          print(type(tc))
+          print(vars(tc))
+          EOF
 
       # =========================
       # Sanity check (IMPORTANTE)
