@@ -30,11 +30,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential
 
-      - name: Configure Devito compiler (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          echo "DEVITO_COMPILER=gnu" >> $GITHUB_ENV
-
       # =========================
       # macOS
       # =========================
@@ -43,11 +38,6 @@ jobs:
         run: |
           brew update
           brew install open-mpi
-
-      - name: Configure Devito compiler (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          echo "DEVITO_COMPILER=clang" >> $GITHUB_ENV
 
       # ------------------------------------------------------------
       # Python
