@@ -50,14 +50,14 @@ jobs:
       # =========================
       - name: Install pylops (local)
         run: |
-          pip install .
+          micromamba run -n pylops pip install .
 
       # =========================
       # Devito fork
       # =========================
       - name: Install GeoSymCodes Devito
         run: |
-          pip install git+https://github.com/GeoSymCodes/devito.git packaging
+          micromamba run -n pylops pip install git+https://github.com/GeoSymCodes/devito.git packaging
 
       # =========================
       # Sanity check (IMPORTANTE)
@@ -65,11 +65,11 @@ jobs:
       - name: Test Devito import
         if: runner.os == 'Linux'
         run: |
-          python - << 'EOF'
+          micromamba run -n pylops python - << 'EOF'
           import devito
           print("Devito OK:", devito.__version__)
           EOF
 
       - name: Test with pytest
         run: |
-          pytest
+          micromamba run -n pylops pytest

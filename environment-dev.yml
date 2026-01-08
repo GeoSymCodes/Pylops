@@ -25,6 +25,8 @@ dependencies:
   - autopep8
   - isort
   - black
+  - mpi4py
+  - segyio
   - pip:
     - devito
     - dtcwt
