@@ -26,8 +26,8 @@ dependencies:
   - isort
   - black
   - mpi4py
-  - segyio # [linux]
-  - clang #[osx]
+  - segyio  # [linux]
+  - clang  #[osx]
   - pip:
     - devito
     - dtcwt
