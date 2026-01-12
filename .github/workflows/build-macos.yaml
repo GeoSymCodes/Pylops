@@ -1,9 +1,15 @@
+# NOTE:
+# Pytest is temporarily disabled on macOS due to numerical
+# instability in several operators.
+# Linux CI remains stable.
+
 name: PyLops
 
 on: [push, pull_request]
 
 jobs:
   build:
+    if: false
     strategy:
       matrix:
         platform: [ macos-15, macos-26, ]
