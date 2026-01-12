@@ -32,7 +32,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew install gcc open-mpi segyio
+          brew install gcc open-mpi
 
       - name: Export Homebrew paths (macOS)
         if: runner.os == 'macOS'
@@ -74,7 +74,7 @@ jobs:
       # =========================
       - name: Fixing numpy version
         run: |
-          micromamba run -n pylops pip install numpy==1.26.3
+          micromamba run -n pylops pip install numpy==1.26.3 segyio
 
       # =========================
       # Testing Pylops
