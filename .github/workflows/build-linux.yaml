@@ -30,15 +30,11 @@ jobs:
       - name: Setting up conda
         uses: mamba-org/setup-micromamba@v1
         with:
+          environment-file: environment-dev-macos.yml
+          extra-specs: |
+            python=${{ matrix.python-version }}
           cache-environment: true
           init-shell: bash
-
-      - name: Creating Conda environment
-        run: |
-          micromamba create -y \
-            -n pylops \
-            python=${{ matrix.python-version }} \
-            -f environment-dev-linux.yml
 
       # =========================
       # PyLops
