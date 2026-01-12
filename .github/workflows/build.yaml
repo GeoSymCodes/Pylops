@@ -6,8 +6,8 @@ jobs:
   build:
     strategy:
       matrix:
-        platform: [ ubuntu-latest, ]
-        python-version: ["3.11", "3.12"]   # 🚫 3.10 removido
+        platform: [ ubuntu-latest, macos-15, macos-26 ]
+        python-version: ["3.10", "3.11", "3.12"]
 
     runs-on: ${{ matrix.platform }}
 
@@ -19,11 +19,26 @@ jobs:
       # =========================
       # Linux
       # =========================
-      - name: Install OpenMPI on Linux
+      - name: Install system deps (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential
+
+      # =========================
+      # MacOS
+      # =========================
+      - name: Install system deps (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install gcc open-mpi
+
+      - name: Export Homebrew paths (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          echo "/opt/homebrew/sbin" >> $GITHUB_PATH
 
       # ------------------------------------------------------------
       # Python
