@@ -16,11 +16,6 @@ jobs:
         with:
           fetch-depth: 0   # necessário para setuptools_scm
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
       # =========================
       # Linux
       # =========================
@@ -46,33 +41,29 @@ jobs:
           init-shell: bash
 
       # =========================
-      # PyLops LOCAL
+      # PyLops
       # =========================
       - name: Install pylops (local)
         run: |
           micromamba run -n pylops pip install .
 
       # =========================
-      # Devito fork
+      # Devito
       # =========================
       - name: Install GeoSymCodes Devito
         run: |
           micromamba run -n pylops pip install git+https://github.com/GeoSymCodes/devito.git packaging
 
+      # =========================
+      # Fixing numpy version
+      # =========================
       - name: Fixing numpy version
         run: |
           micromamba run -n pylops pip install numpy==1.26.3
-      # =========================
-      # Sanity check (IMPORTANTE)
-      # =========================
-      - name: Test Devito import
-        if: runner.os == 'Linux'
-        run: |
-          micromamba run -n pylops python - << 'EOF'
-          import devito
-          print("Devito OK:", devito.__version__)
-          EOF
 
+      # =========================
+      # Testing Pylops
+      # =========================
       - name: Test with pytest
         run: |
           micromamba run -n pylops pytest
