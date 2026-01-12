@@ -20,13 +20,14 @@ dependencies:
   - Sphinx
   - numpydoc
   - numba
-  - icc_rt
+  - icc_rt  # [linux]
   - pre-commit
   - autopep8
   - isort
   - black
   - mpi4py
-  - segyio
+  - segyio # [linux]
+  - clang #[osx]
   - pip:
     - devito
     - dtcwt

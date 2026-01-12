@@ -32,7 +32,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew install gcc open-mpi
+          brew install gcc open-mpi segyio
 
       - name: Export Homebrew paths (macOS)
         if: runner.os == 'macOS'
