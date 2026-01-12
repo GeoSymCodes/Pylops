@@ -20,14 +20,11 @@ dependencies:
   - Sphinx
   - numpydoc
   - numba
-  - icc_rt  # [linux]
   - pre-commit
   - autopep8
   - isort
   - black
   - mpi4py
-  - segyio  # [linux]
-  - clang  #[osx]
   - pip:
     - devito
     - dtcwt
@@ -41,3 +38,4 @@ dependencies:
     - image
     - flake8
     - mypy
+    - segyio

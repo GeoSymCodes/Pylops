@@ -6,7 +6,7 @@ jobs:
   build:
     strategy:
       matrix:
-        platform: [ ubuntu-latest, macos-15 ]
+        platform: [ ubuntu-latest, ]
         python-version: ["3.10", "3.11", "3.12"]
 
     runs-on: ${{ matrix.platform }}
@@ -17,28 +17,12 @@ jobs:
           fetch-depth: 0   # necessário para setuptools_scm
 
       # =========================
-      # Linux
+      # System deps
       # =========================
-      - name: Install system deps (Linux)
-        if: runner.os == 'Linux'
+      - name: Install system deps
         run: |
           sudo apt-get update
           sudo apt-get install -y openmpi-bin libopenmpi-dev build-essential
-
-      # =========================
-      # MacOS
-      # =========================
-      - name: Install system deps (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew update
-          brew install gcc open-mpi
-
-      - name: Export Homebrew paths (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          echo "/opt/homebrew/bin" >> $GITHUB_PATH
-          echo "/opt/homebrew/sbin" >> $GITHUB_PATH
 
       # ------------------------------------------------------------
       # Python
@@ -51,7 +35,7 @@ jobs:
       - name: Setting up conda
         uses: mamba-org/setup-micromamba@v1
         with:
-          environment-file: environment-dev.yml
+          environment-file: environment-dev-linux.yml
           cache-environment: true
           init-shell: bash
 
@@ -74,7 +58,7 @@ jobs:
       # =========================
       - name: Fixing numpy version
         run: |
-          micromamba run -n pylops pip install numpy==1.26.3 segyio
+          micromamba run -n pylops pip install numpy==1.26.3
 
       # =========================
       # Testing Pylops
